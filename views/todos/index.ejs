@@ -1,0 +1,301 @@
+<div class="container py-4">
+    <!-- Page Header with Stats -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1 class="page-title">
+                    <% if (typeof searchQuery !== 'undefined' && searchQuery) { %>
+                        Search Results for "<%= searchQuery %>"
+                    <% } else { %>
+                        Task Dashboard
+                    <% } %>
+                </h1>
+                <a href="/todos/new" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus me-2"></i>
+                    Add New Task
+                </a>
+            </div>
+            
+            <!-- Statistics Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3 col-sm-6">
+                    <div class="stat-card bg-primary text-white">
+                        <div class="stat-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3><%= stats.total %></h3>
+                            <p>Total Tasks</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="stat-card bg-success text-white">
+                        <div class="stat-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3><%= stats.completed %></h3>
+                            <p>Completed</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="stat-card bg-warning text-dark">
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3><%= stats.pending %></h3>
+                            <p>Pending</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="stat-card bg-danger text-white">
+                        <div class="stat-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3><%= stats.overdue %></h3>
+                            <p>Overdue</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <% if (stats.total > 0) { %>
+                <div class="progress-container mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">Overall Progress</span>
+                        <span class="fw-bold text-primary"><%= stats.completionRate %>%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-primary" 
+                             role="progressbar" 
+                             style="width: <%= stats.completionRate %>%"
+                             aria-valuenow="<%= stats.completionRate %>" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Filters and Controls -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="filters-card">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Filter by Status</label>
+                        <select class="form-select" id="filterSelect" onchange="applyFilters()">
+                            <option value="all" <%= currentFilter === 'all' ? 'selected' : '' %>>All Tasks</option>
+                            <option value="pending" <%= currentFilter === 'pending' ? 'selected' : '' %>>Pending</option>
+                            <option value="completed" <%= currentFilter === 'completed' ? 'selected' : '' %>>Completed</option>
+                            <option value="overdue" <%= currentFilter === 'overdue' ? 'selected' : '' %>>Overdue</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Sort by</label>
+                        <select class="form-select" id="sortSelect" onchange="applyFilters()">
+                            <option value="newest" <%= currentSort === 'newest' ? 'selected' : '' %>>Newest First</option>
+                            <option value="dueDate" <%= currentSort === 'dueDate' ? 'selected' : '' %>>Due Date</option>
+                            <option value="priority" <%= currentSort === 'priority' ? 'selected' : '' %>>Priority</option>
+                            <option value="alphabetical" <%= currentSort === 'alphabetical' ? 'selected' : '' %>>Alphabetical</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Category</label>
+                        <select class="form-select" id="categorySelect" onchange="applyFilters()">
+                            <option value="all" <%= currentCategory === 'all' ? 'selected' : '' %>>All Categories</option>
+                            <% categories.forEach(category => { %>
+                                <option value="<%= category %>" <%= currentCategory === category ? 'selected' : '' %>>
+                                    <%= category %>
+                                </option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Priority</label>
+                        <select class="form-select" id="prioritySelect" onchange="applyFilters()">
+                            <option value="all" <%= currentPriority === 'all' ? 'selected' : '' %>>All Priorities</option>
+                            <option value="high" <%= currentPriority === 'high' ? 'selected' : '' %>>High</option>
+                            <option value="medium" <%= currentPriority === 'medium' ? 'selected' : '' %>>Medium</option>
+                            <option value="low" <%= currentPriority === 'low' ? 'selected' : '' %>>Low</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Todo List -->
+    <div class="row">
+        <div class="col-12">
+            <% if (todos.length === 0) { %>
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <h3>No tasks found</h3>
+                    <% if (typeof searchQuery !== 'undefined' && searchQuery) { %>
+                        <p class="text-muted">No tasks match your search criteria.</p>
+                        <a href="/todos" class="btn btn-outline-primary">View All Tasks</a>
+                    <% } else { %>
+                        <p class="text-muted">You haven't created any tasks yet. Start by adding your first task!</p>
+                        <a href="/todos/new" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>
+                            Create Your First Task
+                        </a>
+                    <% } %>
+                </div>
+            <% } else { %>
+                <div class="todos-grid">
+                    <% todos.forEach(todo => { %>
+                        <div class="todo-card <%= todo.completed ? 'completed' : '' %> <%= todo.isOverdue ? 'overdue' : '' %>" 
+                             data-todo-id="<%= todo._id %>">
+                            <div class="todo-header">
+                                <div class="todo-priority priority-<%= todo.priority %>">
+                                    <span class="priority-dot"></span>
+                                    <%= todo.priority.toUpperCase() %>
+                                </div>
+                                <div class="todo-actions">
+                                    <button class="btn-icon" onclick="toggleTodo('<%= todo._id %>')" 
+                                            title="<%= todo.completed ? 'Mark as pending' : 'Mark as completed' %>">
+                                        <i class="fas fa-<%= todo.completed ? 'undo' : 'check' %>"></i>
+                                    </button>
+                                    <a href="/todos/<%= todo._id %>/edit" class="btn-icon" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn-icon text-danger" onclick="deleteTodo('<%= todo._id %>')" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="todo-content">
+                                <h5 class="todo-title <%= todo.completed ? 'text-decoration-line-through text-muted' : '' %>">
+                                    <%= todo.title %>
+                                </h5>
+                                <% if (todo.description) { %>
+                                    <p class="todo-description <%= todo.completed ? 'text-muted' : '' %>">
+                                        <%= todo.description %>
+                                    </p>
+                                <% } %>
+                                
+                                <div class="todo-meta">
+                                    <div class="d-flex flex-wrap gap-2 mb-2">
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-folder me-1"></i>
+                                            <%= todo.category %>
+                                        </span>
+                                        <% if (todo.dueDate) { %>
+                                            <span class="badge <%= todo.isOverdue && !todo.completed ? 'bg-danger' : 'bg-info' %>">
+                                                <i class="fas fa-calendar me-1"></i>
+                                                <%= todo.formattedDueDate %>
+                                            </span>
+                                        <% } %>
+                                        <% if (todo.tags && todo.tags.length > 0) { %>
+                                            <% todo.tags.forEach(tag => { %>
+                                                <span class="badge bg-light text-dark">
+                                                    <i class="fas fa-tag me-1"></i>
+                                                    <%= tag %>
+                                                </span>
+                                            <% }); %>
+                                        <% } %>
+                                    </div>
+                                    
+                                    <div class="todo-timestamps">
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            Created: <%= todo.formattedCreatedAt %>
+                                        </small>
+                                        <% if (todo.completed && todo.completedAt) { %>
+                                            <small class="text-success d-block">
+                                                <i class="fas fa-check me-1"></i>
+                                                Completed: <%= new Date(todo.completedAt).toLocaleDateString('en-US', {
+                                                    year: 'numeric',
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                }) %>
+                                            </small>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<script>
+function applyFilters() {
+    const filter = document.getElementById('filterSelect').value;
+    const sort = document.getElementById('sortSelect').value;
+    const category = document.getElementById('categorySelect').value;
+    const priority = document.getElementById('prioritySelect').value;
+    
+    const params = new URLSearchParams();
+    if (filter !== 'all') params.append('filter', filter);
+    if (sort !== 'newest') params.append('sort', sort);
+    if (category !== 'all') params.append('category', category);
+    if (priority !== 'all') params.append('priority', priority);
+    
+    window.location.href = '/todos?' + params.toString();
+}
+
+function toggleTodo(id) {
+    fetch(`/todos/${id}/toggle`, {
+        method: 'PATCH',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error updating todo: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating todo');
+    });
+}
+
+function deleteTodo(id) {
+    if (confirm('Are you sure you want to delete this todo?')) {
+        fetch(`/todos/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error deleting todo: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting todo');
+        });
+    }
+}
+</script>

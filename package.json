@@ -1,0 +1,51 @@
+{
+  "name": "professional-todo-app",
+  "version": "1.0.0",
+  "description": "A clean and professional todo application built with Node.js, Express.js, EJS, and MongoDB",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "demo": "node app-demo.js",
+    "build": "echo 'No build step required'",
+    "deploy": "bash deploy.sh",
+    "deploy:windows": "deploy.bat",
+    "vercel:deploy": "vercel --prod",
+    "vercel:demo": "vercel --local-config vercel-demo.json --prod",
+    "vercel:dev": "vercel dev",
+    "docker:build": "docker build -t professional-todo-app .",
+    "docker:run": "docker run -p 3000:3000 professional-todo-app",
+    "docker:compose": "docker-compose up -d",
+    "docker:stop": "docker-compose down",
+    "heroku:deploy": "git push heroku main",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "todo",
+    "task",
+    "nodejs",
+    "express",
+    "ejs",
+    "mongodb",
+    "mongoose"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "dotenv": "^16.3.1",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
+    "express-ejs-layouts": "^2.5.1",
+    "express-validator": "^7.0.1",
+    "method-override": "^3.0.0",
+    "moment": "^2.29.4",
+    "mongoose": "^8.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

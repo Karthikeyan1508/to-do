@@ -1,0 +1,181 @@
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-xl-6">
+            <div class="form-card">
+                <div class="form-header">
+                    <h2>
+                        <i class="fas fa-plus-circle me-2 text-primary"></i>
+                        Create New Task
+                    </h2>
+                    <p class="text-muted mb-0">Add a new task to your todo list</p>
+                </div>
+
+                <!-- Error Messages -->
+                <% if (errors && errors.length > 0) { %>
+                    <div class="alert alert-danger">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Please fix the following errors:
+                        </h6>
+                        <ul class="mb-0">
+                            <% errors.forEach(error => { %>
+                                <li><%= error.msg %></li>
+                            <% }); %>
+                        </ul>
+                    </div>
+                <% } %>
+
+                <form action="/todos" method="POST" class="needs-validation" novalidate>
+                    <!-- Title -->
+                    <div class="mb-4">
+                        <label for="title" class="form-label required">Task Title</label>
+                        <input type="text" 
+                               class="form-control form-control-lg" 
+                               id="title" 
+                               name="title" 
+                               value="<%= todo.title || '' %>"
+                               placeholder="Enter task title..."
+                               maxlength="200"
+                               required>
+                        <div class="form-text">Maximum 200 characters</div>
+                        <div class="invalid-feedback">Please provide a valid task title.</div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-4">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" 
+                                  id="description" 
+                                  name="description" 
+                                  rows="4"
+                                  placeholder="Add task description (optional)..."
+                                  maxlength="1000"><%= todo.description || '' %></textarea>
+                        <div class="form-text">Maximum 1000 characters</div>
+                    </div>
+
+                    <!-- Priority and Category Row -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="priority" class="form-label">Priority</label>
+                            <select class="form-select" id="priority" name="priority">
+                                <option value="low" <%= (todo.priority || 'medium') === 'low' ? 'selected' : '' %>>
+                                    🟢 Low Priority
+                                </option>
+                                <option value="medium" <%= (todo.priority || 'medium') === 'medium' ? 'selected' : '' %>>
+                                    🟡 Medium Priority
+                                </option>
+                                <option value="high" <%= (todo.priority || 'medium') === 'high' ? 'selected' : '' %>>
+                                    🔴 High Priority
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="category" class="form-label">Category</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="category" 
+                                   name="category" 
+                                   value="<%= todo.category || 'General' %>"
+                                   placeholder="e.g., Work, Personal, Study..."
+                                   maxlength="50">
+                            <div class="form-text">Maximum 50 characters</div>
+                        </div>
+                    </div>
+
+                    <!-- Due Date and Tags Row -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="dueDate" class="form-label">Due Date</label>
+                            <input type="date" 
+                                   class="form-control" 
+                                   id="dueDate" 
+                                   name="dueDate" 
+                                   value="<%= todo.dueDate ? new Date(todo.dueDate).toISOString().split('T')[0] : '' %>"
+                                   min="<%= new Date().toISOString().split('T')[0] %>">
+                            <div class="form-text">Optional due date for this task</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tags" class="form-label">Tags</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="tags" 
+                                   name="tags" 
+                                   value="<%= todo.tags ? todo.tags.join(', ') : '' %>"
+                                   placeholder="e.g., urgent, meeting, review..."
+                                   data-bs-toggle="tooltip"
+                                   title="Separate multiple tags with commas">
+                            <div class="form-text">Separate multiple tags with commas</div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-3 pt-3">
+                        <button type="submit" class="btn btn-primary btn-lg flex-fill">
+                            <i class="fas fa-save me-2"></i>
+                            Create Task
+                        </button>
+                        <a href="/todos" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-times me-2"></i>
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Character counter for title
+document.getElementById('title').addEventListener('input', function() {
+    const maxLength = 200;
+    const currentLength = this.value.length;
+    const formText = this.nextElementSibling;
+    formText.textContent = `${currentLength}/${maxLength} characters`;
+    
+    if (currentLength > maxLength * 0.9) {
+        formText.className = 'form-text text-warning';
+    } else {
+        formText.className = 'form-text';
+    }
+});
+
+// Character counter for description
+document.getElementById('description').addEventListener('input', function() {
+    const maxLength = 1000;
+    const currentLength = this.value.length;
+    const formText = this.nextElementSibling;
+    formText.textContent = `${currentLength}/${maxLength} characters`;
+    
+    if (currentLength > maxLength * 0.9) {
+        formText.className = 'form-text text-warning';
+    } else {
+        formText.className = 'form-text';
+    }
+});
+</script>
