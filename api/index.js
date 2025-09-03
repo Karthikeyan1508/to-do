@@ -296,9 +296,22 @@ app.get('/health', (req, res) => {
 app.get('/todos', todoController.getAllTodos);
 
 app.get('/todos/new', (req, res) => {
-    res.render('todos/create', {
-        title: 'Create New Todo'
-    });
+    try {
+        res.render('todos/create', {
+            title: 'Create New Todo',
+            errors: [],
+            todo: {},
+            categories: ['personal', 'work', 'shopping', 'health', 'education'],
+            priorities: ['low', 'medium', 'high']
+        });
+    } catch (error) {
+        console.error('Error rendering create form:', error);
+        res.status(500).render('error', {
+            title: 'Error',
+            message: 'Error loading create form.',
+            error: {}
+        });
+    }
 });
 
 app.post('/todos', todoController.createTodo);
@@ -313,15 +326,20 @@ app.post('/todos/:id/toggle', todoController.toggleComplete);
 
 // Error handling
 app.use((err, req, res, next) => {
-    console.error(err.stack);
+    console.error('❌ Application Error:', err.message);
+    console.error('❌ Stack trace:', err.stack);
+    console.error('❌ Request URL:', req.url);
+    console.error('❌ Request method:', req.method);
+    
     res.status(500).render('error', {
         title: 'Error',
-        message: 'Something went wrong!',
-        error: {}
+        message: 'Something went wrong! Please try again.',
+        error: process.env.NODE_ENV === 'development' ? err : {}
     });
 });
 
 app.use((req, res) => {
+    console.log('❌ 404 - Page not found:', req.url);
     res.status(404).render('error', {
         title: 'Page Not Found',
         message: 'The page you are looking for does not exist.',
