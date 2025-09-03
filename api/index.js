@@ -39,12 +39,19 @@ app.set('layout', 'layout');
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
 
-// Database connection (with better error handling for serverless)
+// Database connection (optimized for serverless)
 let isConnected = false;
 
 const connectDB = async () => {
-    if (isConnected) {
-        console.log('✅ MongoDB already connected');
+    // In serverless, check if already connected
+    if (mongoose.connection.readyState === 1) {
+        console.log('✅ MongoDB already connected (state: 1)');
+        isConnected = true;
+        return;
+    }
+    
+    if (mongoose.connection.readyState === 2) {
+        console.log('⏳ MongoDB connecting (state: 2)');
         return;
     }
     
@@ -52,26 +59,28 @@ const connectDB = async () => {
         console.log('🔄 Connecting to MongoDB...');
         console.log('🔗 Connection string:', MONGODB_URI.substring(0, 25) + '...');
         
+        // Close any existing connections
+        if (mongoose.connection.readyState !== 0) {
+            await mongoose.disconnect();
+        }
+        
         await mongoose.connect(MONGODB_URI, {
             bufferCommands: false,
-            serverSelectionTimeoutMS: 5000,
-            maxPoolSize: 10,
+            serverSelectionTimeoutMS: 10000,
+            socketTimeoutMS: 45000,
+            maxPoolSize: 1, // Keep it small for serverless
         });
         
         isConnected = true;
         console.log('✅ Connected to MongoDB Atlas');
     } catch (error) {
         console.error('❌ MongoDB connection error:', error.message);
-        console.error('❌ Full error:', error);
         isConnected = false;
         throw error;
     }
 };
 
-// Connect to database immediately
-connectDB().catch(err => {
-    console.error('❌ Initial database connection failed:', err.message);
-});
+// Don't connect immediately in serverless - connect on demand
 
 // Import models and controllers
 const Todo = require('../models/Todo');
@@ -80,7 +89,14 @@ const Todo = require('../models/Todo');
 const todoController = {
     async getAllTodos(req, res) {
         try {
-            await connectDB(); // Ensure connection
+            console.log('📋 Getting all todos...');
+            
+            // Ensure database connection
+            await connectDB();
+            
+            if (mongoose.connection.readyState !== 1) {
+                throw new Error(`Database not connected. ReadyState: ${mongoose.connection.readyState}`);
+            }
             
             const { filter, sort, category, priority } = req.query;
             let query = {};
@@ -119,19 +135,28 @@ const todoController = {
                     sortOptions = { createdAt: -1 };
             }
 
-            const todos = await Todo.find(query).sort(sortOptions);
+            console.log('🔍 Query:', JSON.stringify(query));
+            console.log('📊 Sort:', JSON.stringify(sortOptions));
 
-            // Get statistics
-            const totalTodos = await Todo.countDocuments();
-            const completedTodos = await Todo.countDocuments({ completed: true });
-            const pendingTodos = await Todo.countDocuments({ completed: false });
-            const overdueTodos = await Todo.countDocuments({
-                completed: false,
-                dueDate: { $lt: new Date() }
-            });
+            // Get todos with timeout
+            const todos = await Promise.race([
+                Todo.find(query).sort(sortOptions).lean(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Query timeout')), 20000))
+            ]);
 
-            // Get unique categories
-            const categories = await Todo.distinct('category');
+            console.log('✅ Found todos:', todos.length);
+
+            // Get statistics with timeout
+            const [totalTodos, completedTodos, pendingTodos, overdueTodos, categories] = await Promise.all([
+                Todo.countDocuments().lean(),
+                Todo.countDocuments({ completed: true }).lean(),
+                Todo.countDocuments({ completed: false }).lean(),
+                Todo.countDocuments({
+                    completed: false,
+                    dueDate: { $lt: new Date() }
+                }).lean(),
+                Todo.distinct('category')
+            ]);
 
             const stats = {
                 total: totalTodos,
@@ -139,6 +164,8 @@ const todoController = {
                 pending: pendingTodos,
                 overdue: overdueTodos
             };
+
+            console.log('📊 Stats:', stats);
 
             res.render('todos/index', {
                 title: 'Todo Manager',
@@ -151,11 +178,14 @@ const todoController = {
                 currentPriority: priority || 'all'
             });
         } catch (error) {
-            console.error('Error fetching todos:', error);
+            console.error('❌ Error in getAllTodos:', error.message);
+            console.error('❌ Error stack:', error.stack);
+            console.error('❌ MongoDB state:', mongoose.connection.readyState);
+            
             res.status(500).render('error', {
-                title: 'Error',
-                message: 'Error fetching todos. Please try again.',
-                error: {}
+                title: 'Database Error',
+                message: `Error fetching todos: ${error.message}. Please check your database connection.`,
+                error: process.env.NODE_ENV === 'development' ? error : {}
             });
         }
     },
@@ -281,15 +311,47 @@ app.get('/', (req, res) => {
     res.redirect('/todos');
 });
 
-app.get('/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        database: {
-            connected: isConnected,
-            uri: MONGODB_URI ? 'configured' : 'not configured'
-        },
-        timestamp: new Date().toISOString()
-    });
+app.get('/health', async (req, res) => {
+    try {
+        const dbState = mongoose.connection.readyState;
+        const states = {
+            0: 'disconnected',
+            1: 'connected',
+            2: 'connecting',
+            3: 'disconnecting'
+        };
+        
+        let dbTestResult = 'Not tested';
+        if (dbState === 1) {
+            try {
+                await Todo.findOne().lean();
+                dbTestResult = 'Query successful';
+            } catch (err) {
+                dbTestResult = `Query failed: ${err.message}`;
+            }
+        }
+        
+        res.json({
+            status: 'ok',
+            database: {
+                state: states[dbState] || 'unknown',
+                readyState: dbState,
+                uri: MONGODB_URI ? 'configured' : 'not configured',
+                testResult: dbTestResult
+            },
+            environment: {
+                NODE_ENV: process.env.NODE_ENV,
+                hasMongoURI: !!process.env.MONGODB_URI
+            },
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
 });
 
 // Todo routes
