@@ -1,10 +1,20 @@
 const Todo = require('../models/Todo');
 const { validationResult } = require('express-validator');
+const mongoose = require('mongoose');
 
 const todoController = {
     // Get all todos with filtering and sorting options
     async getAllTodos(req, res) {
         try {
+            // Check database connection
+            if (mongoose.connection.readyState !== 1) {
+                console.error('❌ Database not connected. State:', mongoose.connection.readyState);
+                return res.status(500).render('error', {
+                    title: 'Database Error',
+                    message: 'Database connection is not established. Please check your MongoDB configuration.',
+                    error: process.env.NODE_ENV === 'development' ? { readyState: mongoose.connection.readyState } : {}
+                });
+            }
             const { filter, sort, category, priority } = req.query;
             let query = {};
             let sortOptions = {};
