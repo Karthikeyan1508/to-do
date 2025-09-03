@@ -1,22 +1,32 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "app.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["views/**", "public/**", "models/**", "controllers/**", "routes/**"]
-      }
+  "functions": {
+    "api/index.js": {
+      "runtime": "nodejs18.x"
     }
-  ],
+  },
   "routes": [
+    {
+      "src": "/css/(.*)",
+      "dest": "/public/css/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "/js/(.*)",
+      "dest": "/public/js/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
     {
       "src": "/public/(.*)",
       "dest": "/public/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "/app.js"
+      "dest": "/api/index.js"
     }
   ]
 }
